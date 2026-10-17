@@ -28,24 +28,46 @@ create index if not exists messages_conversation_created_idx on public.messages(
 alter table public.conversations enable row level security;
 alter table public.conversation_members enable row level security;
 alter table public.messages enable row level security;
+create or replace function public.is_conversation_member(target_conversation_id uuid, target_user_id uuid default auth.uid())
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.conversation_members cm
+    where cm.conversation_id = target_conversation_id and cm.user_id = target_user_id
+  );
+$$;
+revoke all on function public.is_conversation_member(uuid, uuid) from public;
+grant execute on function public.is_conversation_member(uuid, uuid) to authenticated;
+
 drop policy if exists "Members can view their conversations" on public.conversations;
-create policy "Members can view their conversations" on public.conversations for select to authenticated using (exists (select 1 from public.conversation_members cm where cm.conversation_id = id and cm.user_id = auth.uid()));
+create policy "Members can view their conversations" on public.conversations for select to authenticated using (public.is_conversation_member(id, auth.uid()));
 drop policy if exists "Users create conversations" on public.conversations;
 create policy "Users create conversations" on public.conversations for insert to authenticated with check (created_by = auth.uid());
 drop policy if exists "Creators can remove empty conversations" on public.conversations;
 create policy "Creators can remove empty conversations" on public.conversations for delete to authenticated using (created_by = auth.uid());
+
 drop policy if exists "Members can view conversation members" on public.conversation_members;
-create policy "Members can view conversation members" on public.conversation_members for select to authenticated using (exists (select 1 from public.conversation_members own where own.conversation_id = conversation_id and own.user_id = auth.uid()));
+create policy "Members can view conversation members" on public.conversation_members for select to authenticated using (public.is_conversation_member(conversation_id, auth.uid()));
 drop policy if exists "Conversation creator adds participants" on public.conversation_members;
 create policy "Conversation creator adds participants" on public.conversation_members for insert to authenticated with check (user_id = auth.uid() or exists (select 1 from public.conversations c where c.id = conversation_id and c.created_by = auth.uid()));
 drop policy if exists "Members update their read marker" on public.conversation_members;
-create policy "Members update their read marker" on public.conversation_members for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "Members update their read marker" on public.conversation_members for update to authenticated using (user_id = auth.uid() and public.is_conversation_member(conversation_id, auth.uid())) with check (user_id = auth.uid());
+
 drop policy if exists "Members read messages" on public.messages;
-create policy "Members read messages" on public.messages for select to authenticated using (exists (select 1 from public.conversation_members cm where cm.conversation_id = conversation_id and cm.user_id = auth.uid()));
+create policy "Members read messages" on public.messages for select to authenticated using (public.is_conversation_member(conversation_id, auth.uid()));
 drop policy if exists "Members send as themselves" on public.messages;
-create policy "Members send as themselves" on public.messages for insert to authenticated with check (sender_id = auth.uid() and exists (select 1 from public.conversation_members cm where cm.conversation_id = conversation_id and cm.user_id = auth.uid()));
+create policy "Members send as themselves" on public.messages for insert to authenticated with check (sender_id = auth.uid() and public.is_conversation_member(conversation_id, auth.uid()));
 drop policy if exists "Senders edit own messages" on public.messages;
-create policy "Senders edit own messages" on public.messages for update to authenticated using (sender_id = auth.uid()) with check (sender_id = auth.uid());
+create policy "Senders edit own messages" on public.messages for update to authenticated using (sender_id = auth.uid() and public.is_conversation_member(conversation_id, auth.uid())) with check (sender_id = auth.uid() and public.is_conversation_member(conversation_id, auth.uid()));
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+exception when undefined_object then
+  null;
+end;
+$$;
 create or replace function public.touch_conversation_on_message()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin

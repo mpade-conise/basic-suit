@@ -48,7 +48,7 @@ create policy "Creators can remove empty conversations" on public.conversations 
 drop policy if exists "Members can view conversation members" on public.conversation_members;
 create policy "Members can view conversation members" on public.conversation_members for select to authenticated using (public.is_conversation_member(conversation_id, auth.uid()));
 drop policy if exists "Conversation creator adds participants" on public.conversation_members;
-create policy "Conversation creator adds participants" on public.conversation_members for insert to authenticated with check (user_id = auth.uid() or exists (select 1 from public.conversations c where c.id = conversation_id and c.created_by = auth.uid()));
+create policy "Conversation creator adds participants" on public.conversation_members for insert to authenticated with check (exists (select 1 from public.conversations c where c.id = conversation_id and c.created_by = auth.uid()));
 drop policy if exists "Members update their read marker" on public.conversation_members;
 create policy "Members update their read marker" on public.conversation_members for update to authenticated using (user_id = auth.uid() and public.is_conversation_member(conversation_id, auth.uid())) with check (user_id = auth.uid());
 

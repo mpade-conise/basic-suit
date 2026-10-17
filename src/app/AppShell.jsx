@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Bell, Bookmark, Check, ChevronDown, CircleHelp, Compass, Flame, Heart, Home, LogIn, Menu, MessageCircle, MoreHorizontal, Music2, Play, Plus, Search, Send, Settings, Share2, ShieldCheck, Sparkles, TrendingUp, Upload, UserRound, Volume2, VolumeX, X } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import ProfilePage from "../pages/profile/profile.jsx";

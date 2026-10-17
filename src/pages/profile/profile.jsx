@@ -15,6 +15,7 @@ export default function ProfilePage({ user, onSignIn, onUpload, onNavigate, noti
   const [content, setContent] = useState([]);
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState("");
+  const [contentRefresh, setContentRefresh] = useState(0);
   const metadata = user?.user_metadata || {};
 
   useEffect(() => {
@@ -41,7 +42,8 @@ export default function ProfilePage({ user, onSignIn, onUpload, onNavigate, noti
 
   useEffect(() => {
     let alive = true;
-    if (!user || !supabase || tab === "Videos") return () => { alive = false; };
+    if (tab === "Videos") { setContentLoading(false); return () => { alive = false; }; }
+    if (!user || !supabase) { setContentLoading(false); return () => { alive = false; }; }
     setContentLoading(true); setContentError("");
     const load = async () => {
       const table = tab === "Liked" ? "likes" : "bookmarks";
@@ -59,7 +61,7 @@ export default function ProfilePage({ user, onSignIn, onUpload, onNavigate, noti
     };
     load();
     return () => { alive = false; };
-  }, [user, tab]);
+  }, [user, tab, contentRefresh]);
 
   const displayName = profile?.display_name || metadata.display_name || metadata.full_name || metadata.name || user?.email?.split("@")[0] || "Your profile";
   const username = profile?.username || metadata.username || user?.email?.split("@")[0] || "creator";
@@ -82,7 +84,7 @@ export default function ProfilePage({ user, onSignIn, onUpload, onNavigate, noti
       {joined && <p className="profile-joined">Joined {joined}</p>}
     </div>
     <div className="profile-content-tabs">{[{label:"Videos",icon:Grid3X3},{label:"Liked",icon:Heart},{label:"Saved",icon:LockKeyhole}].map(({label,icon:Icon})=><button key={label} className={tab===label?"profile-tab profile-tab-active":"profile-tab"} onClick={()=>setTab(label)}><Icon size={16}/>{label}</button>)}</div>
-    {contentLoading ? <div className="profile-content-status"><LoaderCircle size={22} className="profile-spinner"/>Loading {tab.toLowerCase()}…</div> : contentError ? <div className="profile-content-status profile-content-error">{contentError}<button className="profile-secondary" onClick={() => setTab(current => current)}>Try again</button></div> : content.length ? <div className="profile-video-grid">{content.map(video=><a className="profile-video-card" key={video.id} href={video.video_url} target="_blank" rel="noreferrer" aria-label={video.caption || "Open video"}><div className="profile-video-thumb">{video.thumbnail_url ? <img src={video.thumbnail_url} alt="" loading="lazy"/> : <video src={video.video_url} muted preload="metadata" playsInline/>}<span className="profile-video-play"><Play size={19} fill="currentColor"/></span><span className="profile-video-likes"><Heart size={13} fill="currentColor"/>{compact(video.likes_count)}</span></div><p>{video.caption || "Untitled video"}</p><small>{video.created_at ? new Date(video.created_at).toLocaleDateString() : ""}</small></a>)}</div> : <div className="profile-content-empty"><span className="profile-content-icon">{tab==="Videos"?<Video size={27}/>:tab==="Liked"?<Heart size={27}/>:<LockKeyhole size={27}/>}</span><h2>{tab==="Videos"?"Your videos will live here":tab==="Liked"?"Your liked videos":"Your saved videos"}</h2><p>{tab==="Videos"?"Publish your first video to start building your profile.":tab==="Liked"?"Videos you like will be collected here.":"Your private bookmarks are available here."}</p><button className="profile-primary" onClick={tab==="Videos"?onUpload:()=>onNavigate(tab==="Liked"?"For you":"Bookmarks")}>{tab==="Videos"?"Upload your first video":tab==="Liked"?"Discover videos":"Open bookmarks"}</button></div>}
+    {contentLoading ? <div className="profile-content-status"><LoaderCircle size={22} className="profile-spinner"/>Loading {tab.toLowerCase()}…</div> : contentError ? <div className="profile-content-status profile-content-error">{contentError}<button className="profile-secondary" onClick={() => setContentRefresh(value => value + 1)}>Try again</button></div> : content.length ? <div className="profile-video-grid">{content.map(video=><a className="profile-video-card" key={video.id} href={video.video_url} target="_blank" rel="noreferrer" aria-label={video.caption || "Open video"}><div className="profile-video-thumb">{video.thumbnail_url ? <img src={video.thumbnail_url} alt="" loading="lazy"/> : <video src={video.video_url} muted preload="metadata" playsInline/>}<span className="profile-video-play"><Play size={19} fill="currentColor"/></span><span className="profile-video-likes"><Heart size={13} fill="currentColor"/>{compact(video.likes_count)}</span></div><p>{video.caption || "Untitled video"}</p><small>{video.created_at ? new Date(video.created_at).toLocaleDateString() : ""}</small></a>)}</div> : <div className="profile-content-empty"><span className="profile-content-icon">{tab==="Videos"?<Video size={27}/>:tab==="Liked"?<Heart size={27}/>:<LockKeyhole size={27}/>}</span><h2>{tab==="Videos"?"Your videos will live here":tab==="Liked"?"Your liked videos":"Your saved videos"}</h2><p>{tab==="Videos"?"Publish your first video to start building your profile.":tab==="Liked"?"Videos you like will be collected here.":"Your private bookmarks are available here."}</p><button className="profile-primary" onClick={tab==="Videos"?onUpload:()=>onNavigate(tab==="Liked"?"For you":"Bookmarks")}>{tab==="Videos"?"Upload your first video":tab==="Liked"?"Discover videos":"Open bookmarks"}</button></div>}
     {editing && <ProfileEditor user={user} supabase={supabase} onClose={() => setEditing(false)} notify={notify} onSaved={values => setProfile(current => ({ ...current, ...values }))}/>}
   </section>;
 }

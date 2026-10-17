@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { BadgeCheck, Camera, Grid3X3, Heart, Link2, LockKeyhole, Settings, UserRound, Video } from "lucide-react";
 import "./profile.css";
 
-export default function ProfilePage({ user, onSignIn, onUpload, onNavigate }) {
+export default function ProfilePage({ user, onSignIn, onUpload, onNavigate, onSettings }) {
   const [tab, setTab] = useState("Videos");
   const metadata = user?.user_metadata || {};
   const displayName = metadata.display_name || metadata.full_name || metadata.name || user?.email?.split("@")[0] || "Your profile";
@@ -14,7 +14,7 @@ export default function ProfilePage({ user, onSignIn, onUpload, onNavigate }) {
     <div className="profile-cover"><div className="profile-cover-glow"/><button className="profile-cover-edit" onClick={onUpload}><Camera size={15}/> Add a cover story</button></div>
     <div className="profile-summary">
       <div className="profile-avatar-wrap">{avatar ? <img className="profile-avatar" src={avatar} alt={displayName}/> : <span className="profile-avatar profile-avatar-fallback"><UserRound size={34}/></span>}<span className="profile-online"/></div>
-      <div className="profile-actions"><button className="profile-secondary" onClick={onUpload}><Video size={16}/> Create video</button><button className="profile-secondary profile-settings" onClick={() => onNavigate("Settings")} aria-label="Profile settings"><Settings size={17}/></button></div>
+      <div className="profile-actions"><button className="profile-secondary" onClick={onUpload}><Video size={16}/> Create video</button><button className="profile-secondary profile-settings" onClick={onSettings} aria-label="Profile settings"><Settings size={17}/></button></div>
       <h1>{displayName} {metadata.is_verified && <BadgeCheck size={19} className="profile-verified"/>}</h1>
       <p className="profile-handle">@{username}</p>
       <p className="profile-bio">{metadata.bio || "Making space for creativity, community and the moments worth sharing."}</p>

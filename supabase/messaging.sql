@@ -28,6 +28,11 @@ create index if not exists messages_conversation_created_idx on public.messages(
 alter table public.conversations enable row level security;
 alter table public.conversation_members enable row level security;
 alter table public.messages enable row level security;
+
+-- Explicit API privileges for authenticated messaging clients.
+grant select, insert, delete on public.conversations to authenticated;
+grant select, insert, update on public.conversation_members to authenticated;
+grant select, insert, update on public.messages to authenticated;
 create or replace function public.is_conversation_member(target_conversation_id uuid, target_user_id uuid default auth.uid())
 returns boolean language sql stable security definer set search_path = '' as $$
   select exists (
@@ -39,7 +44,7 @@ revoke all on function public.is_conversation_member(uuid, uuid) from public;
 grant execute on function public.is_conversation_member(uuid, uuid) to authenticated;
 
 drop policy if exists "Members can view their conversations" on public.conversations;
-create policy "Members can view their conversations" on public.conversations for select to authenticated using (public.is_conversation_member(id, auth.uid()));
+create policy "Members and creators can view their conversations" on public.conversations for select to authenticated using (created_by = auth.uid() or public.is_conversation_member(id, auth.uid()));
 drop policy if exists "Users create conversations" on public.conversations;
 create policy "Users create conversations" on public.conversations for insert to authenticated with check (created_by = auth.uid());
 drop policy if exists "Creators can remove empty conversations" on public.conversations;
